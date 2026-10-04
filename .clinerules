@@ -1,0 +1,80 @@
+# Configuration & Workspace Paths
+When executing commands, calling tools, or referencing files, resolve paths relative to the current workspace root:
+- **`MOD_DIR`** = `./ColorfulBFG/mod`
+- **`ENGINE_SOURCE`** = `./uzdoom_source`
+- **`DOCS_DIR`** = `./documentazione_ia`
+- **`PLAN_DIR`** = `./plans`
+
+**Testing Tool & Error Handshake:**
+- You can execute UZDoom by running `./launch_doom2.sh` in the workspace root.
+- **CRITICAL:** UZDoom opens a GUI window and will NOT output fatal script errors to the terminal or exit automatically. The bash execution will stay active until the user closes it.
+- **Protocol in Act Mode:**
+  1. Launch `./launch_doom2.sh` via terminal.
+  2. Ask the user in chat: "Did UZDoom launch successfully or crash?" and wait for the user's reply.
+  3. If it crashed, the user will paste the GUI crash message into `error.log` in the workspace root. 
+  2. Switch to plan mode if exists the file `error.log`
+  4. Read `error.log` to diagnose and fix.
+  5. If the run was successful (or after fixing), delete `error.log` if it exists.
+
+---
+
+# Mandatory Plan-First & Execution Protocol
+When planning or breaking down tasks:
+1. **Context Analysis:** Which native C++ or ZScript files are involved? Check `DOCS_DIR` or internal engine ZScript if needed.
+2. **Engine Impact:** Pure ZScript or native C++ inspection required?
+3. **Execution Artifact (`PLAN.md`):**
+   - Write or update `PLAN_DIR/PLAN.md`. If the directory does not exist, create it.
+   - Organize tasks with standard markdown checkboxes (`- [ ]`).
+   - For every task, specify target file paths, exact function signatures, state flows, and scope boundaries (`play` vs `ui`).
+
+**When in Act / Execution Mode (Fast/Execution Model):**
+- You are operating as the execution agent (e.g., DeepSeek 4.1 Flash). Your primary job is to **execute**, not to re-architect.
+- Read `PLAN.md` inside `PLAN_DIR` to understand the architecture provided by the Planner.
+- Execute tasks sequentially, one atomic step at a time.
+- Strictly adhere to the architecture, types, and file locations outlined in `PLAN.md`. Do not invent alternative patterns, overthink, or rewrite logic on your own.
+- **File Updates in `PLAN.md`:** Update `PLAN.md` only to mark completed steps (`- [x]`) or append brief error logs. Do not rewrite the tasks or redesign the architecture.
+- **Plan Failure & Fallback Protocol:** If an architectural design in `PLAN.md` proves fundamentally flawed, causes persistent compiler errors, or requires structural changes not covered by the plan:
+  1. Do NOT improvise or invent alternative architectures in Act Mode.
+  2. Stop modifying files.
+  3. Formulate a brief summary of the exact blocker.
+  4. **Explicitly request the user to switch back to Plan Mode (Smart Model)** so `PLAN.md` can be properly re-evaluated and corrected before resuming execution.
+
+---
+
+# Workspace & Boundaries
+- `MOD_DIR` **(Read/Write):** Custom workspace. Put all code here. Centralize `#include` directives strictly in the root `zscript.txt` / `zscript.zsc`. Never use sub-includes inside individual script files.
+- `ENGINE_SOURCE` **(Strictly READ-ONLY):** Engine source code. Never edit, write, or diff here. Use only for inspection and signature lookup.
+- `DOCS_DIR` **(Strictly READ-ONLY):** ZDoom Wiki Markdown files. Due to conversion, functions with underscores (e.g., `A_LookEx`) may be named with spaces (e.g., `A LookEx.md`). Retry searches replacing `_` with spaces if not found.
+- `PLAN_DIR` **(Read/Write):** Dedicated directory for `PLAN.md`. In *Plan Mode* (Smart Model), use this to create the detailed architecture. In *Act Mode* (Fast Model), use this ONLY to read instructions and check off completed tasks.
+
+---
+
+# Token Efficiency & Search Strategy
+- Do not dump large files into context. Use surgical regex/grep.
+- **Native C++ Exports:** Search for `DEFINE_ACTION_FUNCTION`, `DEFINE_VIRTUAL`, or `DEFINE_FIELD` inside `ENGINE_SOURCE/src/`.
+- **Internal Engine ZScript:** Much of the base gameplay, `Actor`, and `PlayerPawn` logic is defined in ZScript under `ENGINE_SOURCE/wadsrc/static/zscript/` (e.g., `actor.zs`). Always check there before diving into C++.
+
+---
+
+# ZScript Core Directives
+- **Pointer Safety & Casting:** Always null-check pointers before access. Use safe casting (`let x = Type(mo); if (x)`) and type validation (`is`). Note that a projectile's `target` (the shooter) can become null or overwritten upon impact; cache it if needed later.
+- **Drop Logic Caveats:** Setting `bDROPPED = true` on a monster DOES NOT prevent it from dropping weapons upon death. Intercepting friendly monster drops must be done via spatial proximity inside `WorldThingSpawned` on `Inventory` items.
+- **Memory & Scope Rules:**
+  - `static` member variables are strictly forbidden inside `Actor` classes.
+  - Never mix `play` and `ui` scopes directly; communicate via `EventHandler` network events.
+- **Engine Loops & Tics:** Doom's logic runs at a fixed 35 tics per second.
+- **Overrides:** Always invoke `Super.MethodName()` when overriding engine virtual methods unless deliberately suppressing parent behavior.
+
+---
+
+# Error Recovery & Anti-Loop Protocol (Circuit Breaker)
+- **Max Attempt Limit:** You are strictly allowed a maximum of **2 consecutive correction attempts** for any compilation, syntax, or runtime error.
+- **Circuit Breaker Action:** If a build/compile error persists after the second fix:
+  1. **STOP** modifying files immediately. Do not attempt a 3rd blind fix.
+  2. Revert your last uncommitted changes or restore the working baseline.
+  3. Formulate a short, precise diagnostic report:
+     - The exact error message and file line.
+     - The hypothesis of why your fix failed.
+     - The alternative approaches or architectural questions for the user.
+  4. Wait for explicit user input before touching any file again.
+- **No Hallucinated Workarounds:** If a native method, identifier, or flag is reported as unknown or inaccessible by the compiler, **do NOT invent alternative fake flags or guess member names**. Inspect the native C++ engine sources (`ENGINE_SOURCE`) or `DOCS_DIR` using grep, or ask the user directly.
