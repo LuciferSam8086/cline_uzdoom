@@ -11,10 +11,10 @@ When executing commands, calling tools, or referencing files, resolve paths rela
 - **Protocol in Act Mode:**
   1. Launch `./launch_doom2.sh` via terminal.
   2. Ask the user in chat: "Did UZDoom launch successfully or crash?" and wait for the user's reply.
-  3. If it crashed, the user will paste the GUI crash message into `error.log` in the workspace root. 
-  2. Switch to plan mode if exists the file `error.log`
-  4. Read `error.log` to diagnose and fix.
-  5. If the run was successful (or after fixing), delete `error.log` if it exists.
+  3. If it crashed, the user will paste the GUI crash message into `error.log` in the workspace root.
+  4. If `error.log` exists, switch to plan mode to evaluate the architectural fix.
+  5. Read `error.log` to diagnose and fix.
+  6. If the run was successful (or after fixing), delete `error.log` if it exists.
 
 ---
 
@@ -24,6 +24,7 @@ When planning or breaking down tasks:
 2. **Engine Impact:** Pure ZScript or native C++ inspection required?
 3. **Execution Artifact (`PLAN.md`):**
    - Write or update `PLAN_DIR/PLAN.md`. If the directory does not exist, create it.
+   - **Explicit Permission for Planning:** You are explicitly authorized and required to create or modify `PLAN_DIR/PLAN.md` via `write_to_file` during this phase. Code files inside `MOD_DIR` must NEVER be edited until `PLAN.md` is finalized.
    - Organize tasks with standard markdown checkboxes (`- [ ]`).
    - For every task, specify target file paths, exact function signatures, state flows, and scope boundaries (`play` vs `ui`).
 
@@ -42,10 +43,10 @@ When planning or breaking down tasks:
 ---
 
 # Workspace & Boundaries
-- `MOD_DIR` **(Read/Write):** Custom workspace. Put all code here. Centralize `#include` directives strictly in the root `zscript.txt` / `zscript.zsc`. Never use sub-includes inside individual script files.
+- `MOD_DIR` **(Read/Write in Act Mode):** Custom workspace. Put all mod code here. Centralize `#include` directives strictly in the root `zscript.txt` / `zscript.zsc`. Never use sub-includes inside individual script files.
 - `ENGINE_SOURCE` **(Strictly READ-ONLY):** Engine source code. Never edit, write, or diff here. Use only for inspection and signature lookup.
 - `DOCS_DIR` **(Strictly READ-ONLY):** ZDoom Wiki Markdown files. Due to conversion, functions with underscores (e.g., `A_LookEx`) may be named with spaces (e.g., `A LookEx.md`). Retry searches replacing `_` with spaces if not found.
-- `PLAN_DIR` **(Read/Write):** Dedicated directory for `PLAN.md`. In *Plan Mode* (Smart Model), use this to create the detailed architecture. In *Act Mode* (Fast Model), use this ONLY to read instructions and check off completed tasks.
+- `PLAN_DIR` **(Read/Write):** Dedicated directory for `PLAN.md`. Creating/updating `PLAN.md` is explicitly permitted during planning. In *Act Mode*, use this ONLY to read instructions and check off completed tasks.
 
 ---
 
